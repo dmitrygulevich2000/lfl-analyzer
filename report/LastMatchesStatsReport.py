@@ -15,16 +15,13 @@ class LastMatchesStatsReport(Report):
         self.build_id = build_id
 
     def build(self):
-        date_threshold = datetime.today().astimezone(TZ) - timedelta(days=self.days)
-        matches_json = MatchesLoader(self.club).load_json()
+        last_matches_json = load_last_matches(self.club, self.days)
+        last_match_ids = [match["match_id"] for match in last_matches_json]
 
-        last_match_ids = [match["match_id"] for match in matches_json if
-                          datetime.fromisoformat(match["match_date_time"]) > date_threshold]
-
-        stats = load_stats(self.club, last_match_ids, self.build_id)
-        add_points_stats(stats.player_df, total_games=stats.total_games, total_points=stats.total_points)
-
-        self.stats = stats
+        self.stats = load_stats(self.club, last_match_ids, self.build_id).load_assists(
+            set(last_match_ids),
+            self.club,
+        ).calc_points().calc_scores()
 
     def render(self, renderer: Renderer, level=1):
         renderer.heading("Статистика игроков", level)
@@ -35,13 +32,19 @@ class LastMatchesStatsReport(Report):
             renderer.get_href(pr.name, build_player_url(pr.person_id, pr.player_id))
         )[-1])
         display_df["amplua"] = display_df["person_id"].apply(lambda pnid: self.stats.player_info[pnid].amplua_text)
-        display_df["points_avg"] = display_df["points_avg"].apply(lambda f: f"{f:.2f}")
-        display_df["points_impact"] = display_df["points_impact"].apply(lambda f: f"{f:.2f}")
+        df_floats_round2(display_df, [
+            "goals_avg",
+            "goals_assists_avg",
+            "points_avg",
+            "points_impact"
+        ])
 
         display_df = display_df[display_df["games"] > 1]
         display_df.sort_values("goals", ascending=False, inplace=True)
         display_df = display_df[[
-            "player_title", "amplua", "games", "goals", "points", "points_avg", "points_impact"
+            "player_title", "amplua", "games",
+            "goals", "assists", "goals_assists", "goals_avg", "goals_assists_avg",
+            "points", "points_avg", "points_impact"
         ]]
 
         display_df = display_df.rename(columns={
@@ -49,8 +52,12 @@ class LastMatchesStatsReport(Report):
             "amplua": "Поз.",
             "games": "И",
             "goals": "Г",
+            "assists": "П",
+            "goals_assists": "Г+П",
+            "goals_avg": "Г/И",
+            "goals_assists_avg": "(Г+П)/И",
             "points": "О",
             "points_avg": "O/И",
-            "points_impact": "O-Имп"
+            "points_impact": "O-Имп(*)"
         })
-        renderer.pd_table(display_df, sortable=True)
+        renderer.pd_table(display_df, sortable=True, sticky_column=True)

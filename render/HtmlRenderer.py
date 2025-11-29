@@ -17,13 +17,19 @@ class HtmlRenderer(Renderer):
         with self.tag("p"):
             self.file.write(text)
 
-    def pd_table(self, df: pd.DataFrame, *, sortable: bool = False):
+    def pd_table(self, df: pd.DataFrame, *, sortable: bool = False, sticky_column: bool = False):
         self.file.write("\n")
+        classes = []
+        if sortable:
+            classes += ["sortable"]
+        if sticky_column:
+            classes += ["sticky-column"]
+
         df.to_html(self.file,
                    index=False,
                    escape=False,
                    border=0,
-                   classes=None if not sortable else "sortable",
+                   classes=classes,
                    header=True
                    )
         self.file.write("\n")

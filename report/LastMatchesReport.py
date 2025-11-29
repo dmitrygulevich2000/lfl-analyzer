@@ -17,15 +17,10 @@ class LastMatchesReport(Report):
         self.days = days
 
     def build(self):
-        matches_json = MatchesLoader(self.club).load_json()
-
-        last_matches_json = [match for match in matches_json if
-                             datetime.fromisoformat(match["match_date_time"]) >
-                             datetime.today().astimezone(TZ) - timedelta(days=self.days)
-                             ]
+        last_matches_json = load_last_matches(self.club, self.days)
 
         self.season = last_matches_json[0]["season_id"]
-        self.last_matches_json = sorted(last_matches_json, key=lambda m: datetime.fromisoformat(m["match_date_time"]))
+        self.last_matches_json = last_matches_json
 
     def render(self, renderer: Renderer, level=1):
         renderer.heading("Результаты", level)
@@ -34,13 +29,14 @@ class LastMatchesReport(Report):
         last_matches_data = []
 
         for match in self.last_matches_json:
-            assert (match["protocol"] == 1)
+            assert (match["protocol"] == 1 or is_techical_defeat(match))
 
             total_points += club_points(match, self.club)
 
             match_date_time = datetime.fromisoformat(match["match_date_time"]).astimezone(TZ)
 
-            home = renderer.get_href(match["home_club_name"], build_club_url(match["home_id"]))
+            home_name = match["home_club_short_name"] if match["home_club_short_name"] else match["home_club_name"]
+            home = renderer.get_href(home_name, build_club_url(match["home_id"]))
             if match["home_id"] == self.club:
                 home = renderer.get_bold(home)
 

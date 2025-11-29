@@ -13,7 +13,7 @@ class MdRenderer(Renderer):
     def text(self, text: str):
         self.file.write(f"\n{text}\n")
 
-    def pd_table(self, df: pd.DataFrame, *, sortable: bool = False):
+    def pd_table(self, df: pd.DataFrame, *, sortable: bool = False, sticky_column: bool = False):
         self.file.write("\n")
         df.to_markdown(
             self.file,

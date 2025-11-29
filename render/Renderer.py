@@ -16,7 +16,7 @@ class Renderer:
     def text(self, text: str):
         pass
 
-    def pd_table(self, df: pd.DataFrame, *, sortable: bool = False):
+    def pd_table(self, df: pd.DataFrame, *, sortable: bool = False, sticky_column: bool = False):
         pass
 
     def tag(self, tag: str, props=dict()) -> TagContextManager:

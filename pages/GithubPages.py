@@ -33,15 +33,21 @@ class GithubPages:
                 TournamentReport(main_tournaments[0], {main_club, NEON_CLUB_ID}),
             ]),
             SequenceReport(header=HeaderReport("Последние матчи"), reports=[
-                ColumnsReport(LastMatchesReport(reserve_club, days),
-                              LastMatchesStatsReport(reserve_club, days, page_lfl_build_id))
+                ColumnsReport(SequenceReport(reports=[
+                    LastMatchesReport(reserve_club, days),
+                    HeaderReport("Состав"),
+                    LastMatchesAgeReport(reserve_club, days, page_lfl_build_id),
+                    LastMatchesTurnoutReport(reserve_club, days, page_lfl_build_id),
+                ]),
+                    LastMatchesStatsReport(reserve_club, days, page_lfl_build_id)),
             ]),
             SequenceReport(header=HeaderReport("Ожидаемый состав"), reports=[
-                AgeReport(reserve_club, reserve_tournaments),
-                TurnoutReport(reserve_club, reserve_tournaments, page_lfl_build_id),
+                SeasonsAgeReport(reserve_club, seasons, page_lfl_build_id),
+                SeasonsTurnoutReport(reserve_club, seasons, page_lfl_build_id),
             ]),
             # ReserveCapMainReport(reserve_club, reserve_tournaments, main_club, main_tournaments, page_lfl_build_id),
-            SeasonsStatsReport(reserve_club, main_club, seasons, page_lfl_build_id),
+            SeasonsStatsWithMainReport(reserve_club, main_club, seasons, page_lfl_build_id),
+            TextReport("(*) O-Имп (очковый импакт) вычисляется по формуле: (O/И игрока - О/И команды) * И игрока"),
         ]
         )
 

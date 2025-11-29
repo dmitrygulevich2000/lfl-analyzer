@@ -26,7 +26,7 @@ class SequenceReport(Report):
         if self.header is not None:
             self.header.render(renderer, level)
         for r in self.reports:
-            r.render(renderer, level + 1)
+            r.render(renderer, level + int(self.header is not None))
 
 
 class ColumnsReport(Report):
@@ -56,3 +56,14 @@ class HeaderReport(Report):
 
     def render(self, renderer: Renderer, level=1):
         renderer.heading(self.line, level)
+
+
+class TextReport(Report):
+    def __init__(self, text):
+        self.text = text
+
+    def build(self):
+        pass
+
+    def render(self, renderer: Renderer, level=1):
+        renderer.text(self.text)
