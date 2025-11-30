@@ -70,7 +70,7 @@ class TournamentReport(Report):
         index_data = [
             (
                 club["club_id"],
-                club["club_name"],
+                club["club_short_name"] if club["club_short_name"] else club["club_name"],
             )
             for club in raw_json["data"]
         ]

@@ -1,6 +1,6 @@
-from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+import sys
 from typing import Dict, List, Self, Set
 
 import pandas as pd
@@ -9,6 +9,14 @@ from Util import *
 from loader import MatchesLoader, PlayerMatchesLoader, ProtocolLoader
 
 # parsing helpers
+
+BIRTHDAY_DATE_FORMAT = "%Y-%m-%d"
+
+
+def calculate_age(birthday_str, at_date):
+    birthday_date = datetime.strptime(birthday_str, BIRTHDAY_DATE_FORMAT).date()
+    age_timedelta = at_date - birthday_date
+    return age_timedelta.days / 365.25
 
 
 def club_points(match_json, club_id):
@@ -53,6 +61,8 @@ def sum_stats_with_multiindex(*dfs):
 
 
 def sum_stats(*dfs):
+    if any([len(df) == 0 for df in dfs]):
+        print("damn")
     return pd.concat(dfs).groupby(level=0).sum()
 
 
@@ -65,24 +75,27 @@ def df_floats_round2(df: pd.DataFrame, label: str | List[str]) -> pd.DataFrame:
         df[l] = df[l].apply(lambda f: f"{f:.2f}")
 
 
-def limit_by_cum_percent_threshold(df, label, threshold):
+def limit_by_cum_percent_threshold(df: pd.DataFrame, label: str, threshold: float) -> pd.DataFrame:
+    assert (threshold >= 0 and threshold <= 1.0)
+
     df.sort_values(label, ascending=False, inplace=True)
     total = df[label].sum()
     cum_percent_label = label + "_cum_percent"
-    df[cum_percent_label] = (df[label].cumsum() / total).round(2).shift(periods=1, fill_value=0)
-    min_value_to_take = df[df[cum_percent_label] < threshold][label].array[-1]
+    df[cum_percent_label] = (df[label].cumsum() / total).round(2)
+    # .shift(periods=1, fill_value=0)
+    min_value_to_take = df[df[cum_percent_label] >= threshold][label].array[0]
     return df[df[label] >= min_value_to_take]
 
 
 @dataclass
-class Stats:
+class PlayerStats:
     total_games: int
     total_points: int
     player_info: Dict[int, PlayerInfo]
     player_df: pd.DataFrame
 
     def __iadd__(self, other):
-        assert (isinstance(other, Stats))
+        assert (isinstance(other, PlayerStats))
 
         self.total_games += other.total_games
         self.total_points += other.total_points
@@ -102,7 +115,7 @@ class Stats:
         self.player_df["goals_assists_avg"] = self.player_df["goals_assists"] / self.player_df["games"]
         return self
 
-    def load_assists(self, match_ids: Set[int], club_id, season_hint=None):
+    def load_assists(self, club_id: int, match_ids: Set[int], season_hint: int = None):
         player_assists = {}
         for player in self.player_info.values():
             player_assists[player.person_id] = 0
@@ -157,14 +170,17 @@ class Stats:
                 df.loc[goal["goal_person_id"], "goals"] += 1
 
             if (not is_techical_defeat(protocol["info"])):
-                stats_dfs.append(df)
-                all_players.update(match_players)
+                if len(df) == 0:
+                    print(f"Empty statistics for match {mid}", file=sys.stderr)
+                else:
+                    stats_dfs.append(df)
+                    all_players.update(match_players)
             total_club_points += club_points(protocol["info"], club)
 
         total_games = len(match_ids)
         stats_df = sum_stats(*stats_dfs)
 
-        return Stats(
+        return PlayerStats(
             total_games=total_games,
             total_points=total_club_points,
             player_info=all_players,
@@ -172,5 +188,22 @@ class Stats:
         )
 
 
-def load_stats(club: int, match_ids: List[int], build_id: str) -> Stats:
-    return Stats.load(club, match_ids, build_id)
+def load_player_stats(club: int, match_ids: List[int], build_id: str) -> PlayerStats:
+    return PlayerStats.load(club, match_ids, build_id)
+
+
+@dataclass
+class ClubStats:
+    total_games: int
+    total_points: int
+    total_turnout: int
+    ages_array: int
+
+    def __iadd__(self, other):
+        assert (isinstance(other, ClubStats))
+
+        self.total_games += other.total_games
+        self.total_points += other.total_points
+        self.total_turnout += other.total_turnout
+        self.ages_array += other.ages_array
+        return self

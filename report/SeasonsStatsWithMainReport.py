@@ -28,11 +28,13 @@ class SeasonsStatsWithMainReport(Report):
         self.players = self.reserve_stats.player_info | self.main_stats.player_info
 
     def render(self, renderer: Renderer, level=1):
-        renderer.heading("Общая статистика (в дубле и основе)", level)
+        renderer.heading("Дубль и основа", level)
         renderer.text(f"Дубль:  {self.reserve_stats.total_games} игр,  {self.reserve_stats.total_points} очков"
                       f"  ({self.reserve_stats.total_points / self.reserve_stats.total_games:.2f} очков за игру)")
         renderer.text(f"Основа:  {self.main_stats.total_games} игр,  {self.main_stats.total_points} очков"
                       f"  ({self.main_stats.total_points / self.main_stats.total_games:.2f} очков за игру)")
+        renderer.text("В таблице ниже выбраны игроки, покрывающие 70% всех \"явок\" на игры дубля")
+
 
         display_df = self.combined_df.reset_index(names="person_id")
         display_df["player_title"] = display_df["person_id"].apply(lambda pnid: (
@@ -89,12 +91,12 @@ class SeasonsStatsWithMainReport(Report):
         })
         renderer.pd_table(display_df, sortable=True, sticky_column=True)
 
-    def __load_season_stats(self, club: int, season: int, build_id: str) -> Stats:
+    def __load_season_stats(self, club: int, season: int, build_id: str) -> PlayerStats:
         matches_json = MatchesLoader(club, season=season).load_json()
         match_ids = [match["match_id"] for match in matches_json]
-        return load_stats(club, match_ids, build_id).load_assists(set(match_ids), club)
+        return load_player_stats(club, match_ids, build_id).load_assists(club, set(match_ids))
 
-    def __load_seasons_agg_stats(self, club: int, seasons: List[int], build_id: str) -> Stats:
+    def __load_seasons_agg_stats(self, club: int, seasons: List[int], build_id: str) -> PlayerStats:
         if (not seasons):
             return
 

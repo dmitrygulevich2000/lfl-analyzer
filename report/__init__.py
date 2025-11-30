@@ -6,7 +6,8 @@ from .TournamentReport import *
 from .AgeReport import *
 from .TurnoutReport import *
 from .LastMatchesReport import *
-from .LastMatchesStatsReport import *
+from .PlayerStatsReport import *
+from .ClubStatsReport import *
 
 import locale
 

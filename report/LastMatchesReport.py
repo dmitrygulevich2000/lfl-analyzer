@@ -62,6 +62,3 @@ class LastMatchesReport(Report):
             renderer.get_href("ещё матчи", build_matches_url(self.club, self.season)), "...", "...", "...", "..."])
 
         renderer.pd_table(display_df)
-        games = len(last_matches_data)
-        renderer.text(f"Игр: {games}")
-        renderer.text(f"Набрано очков: {total_points} / {3 * games} ({total_points/games:.2f} за игру)")

@@ -25,28 +25,32 @@ class GithubPages:
     def __init__(self, directory):
         self.directory = directory
 
-    def create_reserve_report(self, name_russian, *, reserve_club, reserve_tournaments, main_club, main_tournaments, seasons, days, page_lfl_build_id):
+    def create_reserve_report(self, name_russian, *, reserve_club, reserve_tournaments, main_club, main_tournaments, season_years, days, page_lfl_build_id):
+        season_years.sort()
+        seasons = [season_id_by_year(s) for s in season_years]
+        seasons_header = "Сезон {}".format(season_years[0])
+        if len(seasons) != 1:
+            seasons_header = "Сезоны {}".format(",".join(seasons))
+
         report = SequenceReport(header=NameDateHeaderReport(name_russian, reserve_club),
                                 reports=[
-            SequenceReport(header=HeaderReport("Общие результаты"), reports=[
-                TournamentReport(reserve_tournaments[0], {reserve_club, NEON_D_CLUB_ID}),
-                TournamentReport(main_tournaments[0], {main_club, NEON_CLUB_ID}),
+            SequenceReport(header=HeaderReport("Турнирное положение"), reports=[
+                *([TournamentReport(t, {reserve_club, NEON_D_CLUB_ID}) for t in reserve_tournaments] +
+                  [TournamentReport(t, {main_club, NEON_CLUB_ID})for t in main_tournaments]),
             ]),
             SequenceReport(header=HeaderReport("Последние матчи"), reports=[
                 ColumnsReport(SequenceReport(reports=[
                     LastMatchesReport(reserve_club, days),
-                    HeaderReport("Состав"),
-                    LastMatchesAgeReport(reserve_club, days, page_lfl_build_id),
-                    LastMatchesTurnoutReport(reserve_club, days, page_lfl_build_id),
+                    LastMatchesClubStatsReport(reserve_club, days, page_lfl_build_id),
                 ]),
-                    LastMatchesStatsReport(reserve_club, days, page_lfl_build_id)),
+                    LastMatchesPlayerStatsReport(reserve_club, days, page_lfl_build_id)),
             ]),
-            SequenceReport(header=HeaderReport("Ожидаемый состав"), reports=[
-                SeasonsAgeReport(reserve_club, seasons, page_lfl_build_id),
-                SeasonsTurnoutReport(reserve_club, seasons, page_lfl_build_id),
+            SequenceReport(header=HeaderReport(seasons_header), reports=[
+                SeasonsClubStatsReport(reserve_club, seasons, page_lfl_build_id),
+                SeasonsPlayerStatsReport(reserve_club, seasons, page_lfl_build_id),
             ]),
-            # ReserveCapMainReport(reserve_club, reserve_tournaments, main_club, main_tournaments, page_lfl_build_id),
             SeasonsStatsWithMainReport(reserve_club, main_club, seasons, page_lfl_build_id),
+            # ReserveCapMainReport(reserve_club, reserve_tournaments, main_club, main_tournaments, page_lfl_build_id),
             TextReport("(*) O-Имп (очковый импакт) вычисляется по формуле: (O/И игрока - О/И команды) * И игрока"),
         ]
         )
