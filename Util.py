@@ -35,9 +35,15 @@ LEGACY_SEASON_IDS = {
     2005: 15, 2004: 14, 2003: 13, 2002: 12
 }
 
+LEGACY_SEASON_YEARS = {s: y for y, s in LEGACY_SEASON_IDS.items()}
+
 
 def season_id_by_year(year):
     return LEGACY_SEASON_IDS.get(year, (year - 1984) * 2)
+
+
+def year_by_season_id(season_id):
+    return LEGACY_SEASON_YEARS.get(season_id, season_id // 2 + 1984)
 
 
 DISPLAY_DATE_FORMAT = "%d %B %Y"

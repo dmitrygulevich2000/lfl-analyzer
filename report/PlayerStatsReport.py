@@ -9,21 +9,20 @@ from .common.Common import *
 
 
 class PlayerStatsReportBase(Report):
-    def __init__(self, club, build_id):
-        self.club = club
+    def __init__(self, build_id):
         self.build_id = build_id
 
     def build(self):
         pass
 
-    def _load_for_matches(self, match_ids) -> PlayerStats:
-        return load_player_stats(self.club, match_ids, self.build_id).load_assists(
-            self.club,
+    def _load_for_matches(self, club, match_ids) -> PlayerStats:
+        return load_player_stats(club, match_ids, self.build_id).load_assists(
+            club,
             set(match_ids),
-        ).calc_points().calc_scores()
+        )
 
     def _finalize(self, stats: PlayerStats):
-        self.stats = stats
+        self.stats = stats.calc_points().calc_scores()
 
     def render(self, renderer: Renderer, level=1):
         renderer.heading("Статистика игроков", level)
@@ -54,10 +53,12 @@ class PlayerStatsReportBase(Report):
             "goals_avg": "Г/И",
             "goals_assists_avg": "(Г+П)/И",
             "points": "О",
-            "points_avg": "O/И",
-            "points_impact": "O-Имп(*)"
+            "points_avg": "О/И",
+            "points_impact": "О-Имп(*)"
         })
         renderer.pd_table(display_df, sortable=True, sticky_column=True)
+        if "О-Имп(*)" in display_df:
+            renderer.text("(*) O-Имп (очковый импакт) вычисляется по формуле: (O/И игрока - О/И команды) * И игрока")
 
     def _customize_table(self, display_df: pd.DataFrame) -> pd.DataFrame:
         pass
@@ -65,14 +66,15 @@ class PlayerStatsReportBase(Report):
 
 class LastMatchesPlayerStatsReport(PlayerStatsReportBase):
     def __init__(self, club, days, build_id):
-        super().__init__(club, build_id)
+        super().__init__(build_id)
+        self.club = club
         self.days = days
 
     def build(self):
         last_matches_json = load_last_matches(self.club, self.days)
         last_match_ids = [match["match_id"] for match in last_matches_json]
 
-        stats = self._load_for_matches(last_match_ids)
+        stats = self._load_for_matches(self.club, last_match_ids)
         self._finalize(stats)
 
     def _customize_table(self, display_df: pd.DataFrame) -> pd.DataFrame:
@@ -87,22 +89,69 @@ class LastMatchesPlayerStatsReport(PlayerStatsReportBase):
 
 
 class SeasonsPlayerStatsReport(PlayerStatsReportBase):
-    def __init__(self, club, seasons, build_id):
-        super().__init__(club, build_id)
+    def __init__(self, club, seasons, build_id, tournaments_filter=None):
+        super().__init__(build_id)
+        self.club = club
         self.seasons = seasons
+        self.tournaments_filter = tournaments_filter
 
     def build(self):
         if (not self.seasons):
             return
 
         matches_json = MatchesLoader(self.club, season=self.seasons[0]).load_json()
-        stats = self._load_for_matches([m["match_id"] for m in matches_json])
+        if self.tournaments_filter is not None:
+            matches_json = [m for m in matches_json if m["tournament_id"] in self.tournaments_filter]
+        stats = self._load_for_matches(self.club, [m["match_id"] for m in matches_json])
         for season in self.seasons[1:]:
             matches_json = MatchesLoader(self.club, season=season).load_json()
-            season_stats = self._load_for_matches([m["match_id"] for m in matches_json])
+            if self.tournaments_filter is not None:
+                matches_json = [m for m in matches_json if m["tournament_id"] in self.tournaments_filter]
+            season_stats = self._load_for_matches(self.club, [m["match_id"] for m in matches_json])
             stats += season_stats
 
         self._finalize(stats)
+
+    def _customize_table(self, display_df: pd.DataFrame) -> pd.DataFrame:
+        # dummy filter that calcs games_cum_percent
+        display_df = limit_by_cum_percent_threshold(display_df, "games", 1.0)
+        display_df.sort_values("games", ascending=False, inplace=True)
+        display_df = display_df[[
+            "player_title", "amplua", "games", "games_cum_percent",
+            "goals", "assists", "goals_assists", "goals_avg", "goals_assists_avg",
+            "points", "points_avg", "points_impact"
+        ]]
+        return display_df
+
+
+class SeasonsClubsPlayerStatsReport(PlayerStatsReportBase):
+    def __init__(self, clubs, seasons, build_id):
+        super().__init__(build_id)
+        self.clubs = clubs
+        self.seasons = seasons
+
+    def build(self):
+        if (not self.seasons):
+            return
+
+        total_stats = None
+        for club in self.clubs:
+
+            matches_json = MatchesLoader(club, season=self.seasons[0]).load_json()
+            stats = self._load_for_matches(club, [m["match_id"] for m in matches_json])
+
+            for season in self.seasons[1:]:
+                matches_json = MatchesLoader(club, season=season).load_json()
+                season_stats = self._load_for_matches(club, [m["match_id"] for m in matches_json])
+
+                stats += season_stats
+
+            if total_stats is None:
+                total_stats = stats
+            else:
+                total_stats += stats
+
+        self._finalize(total_stats)
 
     def _customize_table(self, display_df: pd.DataFrame) -> pd.DataFrame:
         # dummy filter that calcs games_cum_percent

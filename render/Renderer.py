@@ -22,6 +22,9 @@ class Renderer:
     def tag(self, tag: str, props=dict()) -> TagContextManager:
         pass
 
+    def get_line_break(self) -> str:
+        pass
+
     def get_href(self, text: str, url: str) -> str:
         pass
 

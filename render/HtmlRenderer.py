@@ -36,6 +36,9 @@ class HtmlRenderer(Renderer):
 
     def tag(self, tag: str, props=dict()) -> TagContextManager:
         return HtmlTag(self.file, self, tag, props)
+    
+    def get_line_break(self) -> str:
+        return "<br>"
 
     def get_href(self, text: str, url: str) -> str:
         return f"<a href=\"{url}\">{text}</a>"

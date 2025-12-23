@@ -47,17 +47,6 @@ class ColumnsReport(Report):
                 self.report_right.render(renderer, level)
 
 
-class HeaderReport(Report):
-    def __init__(self, line):
-        self.line = line
-
-    def build(self):
-        pass
-
-    def render(self, renderer: Renderer, level=1):
-        renderer.heading(self.line, level)
-
-
 class TextReport(Report):
     def __init__(self, text):
         self.text = text

@@ -194,6 +194,7 @@ def load_player_stats(club: int, match_ids: List[int], build_id: str) -> PlayerS
 
 @dataclass
 class ClubStats:
+    total_protocols: int
     total_games: int
     total_points: int
     total_turnout: int
@@ -202,6 +203,7 @@ class ClubStats:
     def __iadd__(self, other):
         assert (isinstance(other, ClubStats))
 
+        self.total_protocols += other.total_protocols
         self.total_games += other.total_games
         self.total_points += other.total_points
         self.total_turnout += other.total_turnout

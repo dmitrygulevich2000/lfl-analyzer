@@ -29,7 +29,6 @@ class LastMatchesReport(Report):
         last_matches_data = []
 
         for match in self.last_matches_json:
-            assert (match["protocol"] == 1 or is_techical_defeat(match))
 
             total_points += club_points(match, self.club)
 
@@ -50,10 +49,9 @@ class LastMatchesReport(Report):
                     match_date_time.time().strftime(LastMatchesReport.MATCH_TIME_FORMAT),
                     home,
                     renderer.get_href(
-                        "{}:{}".format(match["home_score"], match["away_score"]) +
-                        ("\n({})".format(match["note"]) if match["note"] else ""),
+                        "{}:{}".format(match["home_score"], match["away_score"]),
                         build_match_url(match["tournament_id"], match["tour"], match["match_id"])
-                    ),
+                    )+("{}({})".format(renderer.get_line_break(), match["note"]) if match["note"] else ""),
                     away,
                 ]
             )

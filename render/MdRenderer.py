@@ -22,6 +22,9 @@ class MdRenderer(Renderer):
         )
         self.file.write("\n")
 
+    def get_line_break(self) -> str:
+        return " "
+
     def tag(self, tag: str, props=dict()) -> TagContextManager:
         return MdTag(self.file, self, tag, props)
 

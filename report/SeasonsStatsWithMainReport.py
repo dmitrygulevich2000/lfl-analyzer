@@ -28,13 +28,12 @@ class SeasonsStatsWithMainReport(Report):
         self.players = self.reserve_stats.player_info | self.main_stats.player_info
 
     def render(self, renderer: Renderer, level=1):
-        renderer.heading("Дубль и основа", level)
+        renderer.heading("Дубль || Основа", level)
         renderer.text(f"Дубль:  {self.reserve_stats.total_games} игр,  {self.reserve_stats.total_points} очков"
                       f"  ({self.reserve_stats.total_points / self.reserve_stats.total_games:.2f} очков за игру)")
         renderer.text(f"Основа:  {self.main_stats.total_games} игр,  {self.main_stats.total_points} очков"
                       f"  ({self.main_stats.total_points / self.main_stats.total_games:.2f} очков за игру)")
         renderer.text("В таблице ниже выбраны игроки, покрывающие 70% всех \"явок\" на игры дубля")
-
 
         display_df = self.combined_df.reset_index(names="person_id")
         display_df["player_title"] = display_df["person_id"].apply(lambda pnid: (
@@ -75,21 +74,23 @@ class SeasonsStatsWithMainReport(Report):
             "goals_assists_reserve": "[Д] Г+П",
             "goals_avg_reserve": "[Д] Г/И",
             "goals_assists_avg_reserve": "[Д] (Г+П)/И",
-            "points_reserve": "[Д] O",
-            "points_avg_reserve": "[Д] O/И",
-            "points_impact_reserve": "[Д] O-Имп(*)",
+            "points_reserve": "[Д] О",
+            "points_avg_reserve": "[Д] О/И",
+            "points_impact_reserve": "[Д] О-Имп(*)",
             "separator": "",
-            "games_main": "[O] И",
-            "goals_main": "[O] Г",
-            "assists_main": "[O] П",
-            "goals_assists_main": "[O] Г+П",
-            "goals_avg_main": "[O] Г/И",
-            "goals_assists_avg_main": "[O] (Г+П)/И",
-            "points_main": "[O] O",
-            "points_avg_main": "[O] O/И",
-            "points_impact_main": "[O] O-Имп(*)",
+            "games_main": "[О] И",
+            "goals_main": "[О] Г",
+            "assists_main": "[О] П",
+            "goals_assists_main": "[О] Г+П",
+            "goals_avg_main": "[О] Г/И",
+            "goals_assists_avg_main": "[О] (Г+П)/И",
+            "points_main": "[О] О",
+            "points_avg_main": "[О] О/И",
+            "points_impact_main": "[О] О-Имп(*)",
         })
         renderer.pd_table(display_df, sortable=True, sticky_column=True)
+        if any(map(lambda s: "О-Имп" in s, display_df.columns.tolist())):
+            renderer.text("(*) O-Имп (очковый импакт) вычисляется по формуле: (O/И игрока - О/И команды) * И игрока")
 
     def __load_season_stats(self, club: int, season: int, build_id: str) -> PlayerStats:
         matches_json = MatchesLoader(club, season=season).load_json()

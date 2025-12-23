@@ -25,38 +25,68 @@ class GithubPages:
     def __init__(self, directory):
         self.directory = directory
 
-    def create_reserve_report(self, name_russian, *, reserve_club, reserve_tournaments, main_club, main_tournaments, season_years, days, page_lfl_build_id):
-        season_years.sort()
-        seasons = [season_id_by_year(s) for s in season_years]
-        seasons_header = "Сезон {}".format(season_years[0])
-        if len(seasons) != 1:
-            seasons_header = "Сезоны {}".format(",".join(seasons))
-
+    def create_reserve_report(self, name_russian, *, reserve_club, reserve_tournaments, main_club, main_tournaments, seasons, days, page_lfl_build_id):
         report = SequenceReport(header=NameDateHeaderReport(name_russian, reserve_club),
                                 reports=[
-            SequenceReport(header=HeaderReport("Турнирное положение"), reports=[
-                *([TournamentReport(t, {reserve_club, NEON_D_CLUB_ID}) for t in reserve_tournaments] +
-                  [TournamentReport(t, {main_club, NEON_CLUB_ID})for t in main_tournaments]),
-            ]),
+            SequenceReport(header=HeaderReport("Турнирное положение"),
+                           reports=[
+                               TournamentReport(reserve_tournaments[0], {reserve_club, NEON_D_CLUB_ID}),
+                               TournamentReport(main_tournaments[0], {main_club, NEON_CLUB_ID}),
+            ]
+            ),
             SequenceReport(header=HeaderReport("Последние матчи"), reports=[
                 ColumnsReport(SequenceReport(reports=[
                     LastMatchesReport(reserve_club, days),
                     LastMatchesClubStatsReport(reserve_club, days, page_lfl_build_id),
                 ]),
-                    LastMatchesPlayerStatsReport(reserve_club, days, page_lfl_build_id)),
+                    LastMatchesPlayerStatsReport(reserve_club, days, page_lfl_build_id)
+                ),
             ]),
-            SequenceReport(header=HeaderReport(seasons_header), reports=[
+            SequenceReport(header=SeasonsHeaderReport(seasons), reports=[
                 SeasonsClubStatsReport(reserve_club, seasons, page_lfl_build_id),
                 SeasonsPlayerStatsReport(reserve_club, seasons, page_lfl_build_id),
             ]),
             SeasonsStatsWithMainReport(reserve_club, main_club, seasons, page_lfl_build_id),
-            # ReserveCapMainReport(reserve_club, reserve_tournaments, main_club, main_tournaments, page_lfl_build_id),
-            TextReport("(*) O-Имп (очковый импакт) вычисляется по формуле: (O/И игрока - О/И команды) * И игрока"),
         ]
         )
+        report.build()
+        self.create_report(name_russian, report)
+
+    def create_main_report(self, name_russian, *, main_club, main_tournaments, reserve_club=None, reserve_tournaments=None, seasons, days, page_lfl_build_id):
+        all_reports = [
+            SequenceReport(header=HeaderReport("Турнирное положение"),
+                           reports=[TournamentReport(main_tournaments[0], {main_club, NEON_CLUB_ID})] +
+                           ([] if reserve_club is None else
+                           [TournamentReport(reserve_tournaments[0], {reserve_club, NEON_D_CLUB_ID})])
+                           ),
+            SequenceReport(header=HeaderReport("Последние матчи"), reports=[
+                ColumnsReport(SequenceReport(reports=[
+                    LastMatchesReport(main_club, days),
+                    LastMatchesClubStatsReport(main_club, days, page_lfl_build_id),
+                ]),
+                    LastMatchesPlayerStatsReport(main_club, days, page_lfl_build_id)
+                ),
+            ]),
+            SequenceReport(header=TournamentsHeaderReport(main_tournaments), reports=[
+                SeasonsClubStatsReport(main_club, seasons, page_lfl_build_id, main_tournaments),
+                SeasonsPlayerStatsReport(main_club, seasons, page_lfl_build_id, main_tournaments),
+            ]),
+
+        ]
+        if reserve_club is not None:
+            assert (reserve_tournaments is not None)
+            all_reports.append(SequenceReport(header=HeaderReport("Основа + Дубль"), reports=[
+                SeasonsClubsClubStatsReport([main_club, reserve_club], seasons, page_lfl_build_id),
+                SeasonsClubsPlayerStatsReport([main_club, reserve_club], seasons, page_lfl_build_id),
+            ]))
+
+        report = SequenceReport(header=NameDateHeaderReport(name_russian, main_club),
+                                reports=all_reports)
 
         report.build()
+        self.create_report(name_russian, report)
 
+    def create_report(self, name_russian: str, report: Report):
         report_dir = os.path.join(
             self._reports_dir(),
             translit(name_russian, 'ru', reversed=True).lower().translate(str.maketrans(" -", "__", "'"))
@@ -67,7 +97,7 @@ class GithubPages:
         with open("{}/name.txt".format(report_dir), "w") as f:
             f.write(name_russian)
         with open("{}/{}.html".format(report_dir, today), "w") as f:
-            f.write("---\n---\n")
+            f.write(f"---\ntitle: {name_russian}\n---\n")
             renderer = HtmlRenderer(f)
             report.render(renderer, 2)
 
